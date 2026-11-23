@@ -21,7 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent
 
 DATA_DIR = BASE_DIR / "Dataset"
 
-ANALISE_DIR = BASE_DIR / "dataset_analises"
+ANALISE_DIR = BASE_DIR / "Dataset_analise"
 
 TRAIN_AND_TEST_SIMPLE_DIR = BASE_DIR / "Test_&_Train" / "Simple"
 
@@ -46,7 +46,7 @@ def get_mode_dir(mode):
 
 
 def analise():
-    run_script(ANALISE_DIR / "analise.py")
+    run_script(ANALISE_DIR / "dataset_analises_main.py")
 
 
 def train(mode):

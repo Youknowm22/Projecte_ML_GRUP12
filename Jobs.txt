@@ -3,6 +3,28 @@ Jobs
     week1-
     
         db analysis-
+        Recetas (RAW_recipes)
+            Distribución de minutes, n_steps y n_ingredients, y cómo se relacionan entre sí (outliers como recetas de 0 minutos o de varios años)
+
+            Separar nutrition en sus 7 valores (calorías, grasa, azúcar, sodio, proteína, grasa saturada, carbohidratos) y estudiar sus distribuciones y correlaciones
+
+            Frecuencias a nivel de ingrediente (cada ingrediente como un token) comparadas con las de nivel de palabra
+
+            Tags más comunes y cuántas recetas lleva cada uno (cocina, tipo de comida, dieta, tiempo)
+
+            Qué ingredientes aparecen juntos con más frecuencia (matriz de co-ocurrencia, pares principales)
+
+            TF-IDF sobre ingredientes y tags para encontrar los ingredientes o palabras más distintivos de cada receta
+
+            Similitud entre recetas (coseno sobre BoW/TF-IDF): ¿las recetas similares lo son realmente?
+
+        Interacciones (RAW_interactions)
+
+            Distribución de las valoraciones (cuántos 5, cuántos 0, y qué significa un 0: valoración ausente o mala)
+
+            Interacciones por usuario y por receta (cola larga, cold start: cuántos usuarios o recetas tienen una sola interacción)
+            
+            Grado de dispersión de la matriz usuario × receta
 
         simple model-
 
