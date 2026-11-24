@@ -68,7 +68,7 @@ def get_labels_and_values_list_num(df, feature, position):
 
     return labels, values
 
-def get_range_values(labels, values, filename, percentile_range=5, output_dir="Dataset_analise/Resultats/value_range"):
+def get_range_values(labels, values, filename, percentile_range=5, output_dir="Dataset_analise/Resultats/valuerange"):
 
     filename = f"{filename}_valuerange_{percentile_range}.csv"
 
@@ -117,7 +117,7 @@ def get_range_values(labels, values, filename, percentile_range=5, output_dir="D
 
     return (labels_up, values_up), (labels_down, values_down)
 
-def analise_column_range_cases(df_raw_recipe, feature, percentile=95):
+def analise_column_range_cases(df_raw_recipe, feature, percentile=5):
 
     type_feat = DICT_COLUMN_TYPE.get(feature)
 
@@ -125,7 +125,7 @@ def analise_column_range_cases(df_raw_recipe, feature, percentile=95):
         labels_array, values_array = get_labels_and_values_int(df_raw_recipe, feature)
         get_range_values(labels_array, values_array, filename=feature, percentile_range=percentile)
 
-    elif type_feat in ("list_str"):
+    elif type_feat == "list_str":
         labels_array, values_array = get_labels_and_values_list_string(df_raw_recipe, feature)
         get_range_values(labels_array, values_array, filename=feature, percentile_range=percentile)
 
@@ -136,7 +136,7 @@ def analise_column_range_cases(df_raw_recipe, feature, percentile=95):
     elif type_feat == "list_num":
         for position, nutrient in NUTRITION_POSITIONS.items():
             labels, values = get_labels_and_values_list_num(df_raw_recipe, "nutrition", position)
-            get_range_values(labels, values, filename=f"nutrition_{nutrient}")
+            get_range_values(labels, values, filename=f"nutrition_{nutrient}", percentile_range=percentile)
 
     else:
         print(f"Aviso: la columna '{feature}' no tiene tipo definido y se ignora.")

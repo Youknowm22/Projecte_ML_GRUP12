@@ -28,6 +28,7 @@ import csv
 import ast
 from Edge_cases import  analise_column_edge_cases
 from range_cases import analise_column_range_cases
+from Csv_to_graph import generate_graph, OUT_DIR_DICTIONARY, FEATURES
 
 DATA_DIR = Path(sys.argv[1])
 
@@ -54,18 +55,26 @@ NUTRITION_POSITIONS = {
     6: "carbohydrates_pdv",
 }
 
-
 def download_dataset(dataset_path):
     '''
-    Lee un archivo CSV y lo carga en un DataFrame.
+    Carga un dataset. Si ya existe su pickle en pickles/, lo carga;
+    si no, lee el CSV y guarda el pickle para la próxima vez.
 
     Parámetros:
         dataset_path (Path): ruta del archivo CSV.
 
     Devuelve:
-        pd.DataFrame: el contenido del CSV.
+        pd.DataFrame: el contenido del dataset.
     '''
-    data_df = pd.read_csv(dataset_path)
+    pickle_dir = Path(__file__).resolve().parent.parent / "pickles"
+    pickle_path = pickle_dir / (dataset_path.stem + ".pkl")
+
+    if pickle_path.exists():
+        data_df = pd.read_pickle(pickle_path)
+    else:
+        data_df = pd.read_csv(dataset_path)
+        os.makedirs(pickle_dir, exist_ok=True)
+        data_df.to_pickle(pickle_path)
 
     print(f"{dataset_path.name}: {data_df.shape[0]} filas, {data_df.shape[1]} columnas")
 
@@ -118,7 +127,7 @@ def main():
     option = "T"
 
     while option != "S":
-        option = input("What do you want to do? (edge_cases // value_range // S): ").strip()
+        option = input("What do you want to do? (edge_cases // value_range // generate_grafo // S): ").strip()
 
         if option == "edge_cases":
             print("Columnas disponibles:", list(df_raw_recipes.columns))
@@ -144,6 +153,19 @@ def main():
 
             for feature in feature_list:
                 analise_column_range_cases(df_raw_recipes, feature)
+
+        elif option == "generate_grafo":
+            print("Pruebas disponibles: edgecases, valuerange")
+            prueba = input("Enter the test name: ").strip()
+
+            print("Features disponibles: all,", ", ".join(FEATURES))
+            feature = input("Enter the feature name: ").strip()
+
+            print("Percentiles: edgecases -> 95, 90 | valuerange -> 5, 10")
+            default = "95" if prueba == "edgecases" else "5"
+            percentile = input(f"Enter the percentile (default {default}): ").strip() or default
+
+            generate_graph(prueba, feature, percentile)
 
         elif option == "S":
             print("Saliendo...")

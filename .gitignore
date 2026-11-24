@@ -2,8 +2,8 @@
 /Dataset
 /Dataset_analise/Resultats
 /.vscode
-
-
+/Dataset_analise/grafos
+/pickles
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

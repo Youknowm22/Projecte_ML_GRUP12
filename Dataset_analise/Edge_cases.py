@@ -91,7 +91,7 @@ def bow_to_freq(bow_tuple):
     freq_array = np.asarray(np.sum(bow_matrix, axis=0)).ravel()
     return labels_array, freq_array
 
-def get_edge_cases(labels_array, freq_array, filename, percentile=95, output_dir="Dataset_analise/Resultats/edge_cases"):
+def get_edge_cases(labels_array, freq_array, filename, percentile=95, output_dir="Dataset_analise/Resultats/edgecases"):
 
     filename = f"{filename}_edgecases_{percentile}.csv"
 
