@@ -5,9 +5,6 @@ Jobs
         db analysis-
         Por acabar-
 
-            error en edge_cases y documentar funcion 
-
-
         Recetas (RAW_recipes)
             Distribución de minutes, n_steps y n_ingredients, y cómo se relacionan entre sí (outliers como recetas de 0 minutos o de varios años)
 

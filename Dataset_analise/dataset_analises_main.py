@@ -23,9 +23,36 @@ import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from typing import Tuple
 import numpy as np
-
+import os
+import csv
+import ast
+from Edge_cases import  analise_column_edge_cases
+from range_cases import analise_column_range_cases
 
 DATA_DIR = Path(sys.argv[1])
+
+DICT_COLUMN_TYPE = {
+    "id":             "int",
+    "minutes":        "int",
+    "contributor_id": "int",
+    "tags":           "list_str",
+    "nutrition":      "list_num",
+    "n_steps":        "int",
+    "steps":          "list_str",
+    "description":    "string",
+    "ingredients":    "list_str",
+    "n_ingredients":  "int",
+}
+
+NUTRITION_POSITIONS = {
+    0: "calories",
+    1: "total_fat_pdv",
+    2: "sugar_pdv",
+    3: "sodium_pdv",
+    4: "protein_pdv",
+    5: "saturated_fat_pdv",
+    6: "carbohydrates_pdv",
+}
 
 
 def download_dataset(dataset_path):
@@ -78,47 +105,6 @@ def parse_feature_list(feature_str, valid_columns):
     return feature_list
 
 
-def bow_distribution_colum(df, column):
-    '''
-    Aplica un Bag of Words (CountVectorizer) a una columna de texto del DataFrame
-    y muestra información básica del vocabulario obtenido.
-
-    Parámetros:
-        df (pd.DataFrame): DataFrame con los datos.
-        column (str): nombre de la columna de texto a analizar.
-
-    Devuelve:
-        tuple: (bow, X_docs)
-            bow (CountVectorizer): el vectorizador ya entrenado.
-            X_docs (scipy.sparse matrix): matriz documento-término.
-    '''
-    # Rellenar los valores vacíos (NaN) para que CountVectorizer no falle
-    recipe_columm = df[column].fillna("").astype(str)
-
-    bow = CountVectorizer()
-    X_docs = bow.fit_transform(recipe_columm)
-
-    print(f"\n--- BoW de '{column}' ---")
-    print("Mida del vocabulari:", len(bow.vocabulary_))
-    print("Tipus de matriu:", type(X_docs), X_docs.shape)
-    print(bow.get_feature_names_out()[:30])
-
-    return bow, X_docs
-
-def get_edge_cases(bow_tuple):
-    bow_feat, bow_matrix = bow_tuple
-
-    feat_colum = bow_feat.get_feature_names_out()
-    word_freq = np.sum(bow_matrix, axis=0)
-    percentile_value = np.percentile(word_freq, 95, axis=0)
-    word_fre_mask = ( word_freq >= percentile_value)
-
-    edge_cases = feat_colum[word_fre_mask]
-
-    print(edge_cases)
-
-    print("hola")
-
 def main():
     '''
     Punto de entrada del análisis.
@@ -132,11 +118,11 @@ def main():
     option = "T"
 
     while option != "S":
-        option = input("What do you want to do? (bow_dist / S): ").strip()
+        option = input("What do you want to do? (edge_cases // value_range // S): ").strip()
 
-        if option == "bow_dist":
+        if option == "edge_cases":
             print("Columnas disponibles:", list(df_raw_recipes.columns))
-            feature_str = input("Analising bow for which features?([feature1, feature2, ..., featuren]): ")
+            feature_str = input("Analising edge_cases for which features?([feature1, feature2, ..., featuren]): ")
 
             feature_list = parse_feature_list(feature_str, df_raw_recipes.columns)
 
@@ -145,11 +131,22 @@ def main():
                 continue
 
             for feature in feature_list:
-                bow_tuple = bow_distribution_colum(df_raw_recipes, feature)
-                get_edge_cases(bow_tuple)
+                analise_column_edge_cases(df_raw_recipes, feature)
+        elif option == "value_range":
+            print("Columnas disponibles:", list(df_raw_recipes.columns))
+            feature_str = input("Analising value_range for which features?([feature1, feature2, ..., featuren]): ")
+
+            feature_list = parse_feature_list(feature_str, df_raw_recipes.columns)
+
+            if not feature_list:
+                print("No se ha indicado ninguna columna válida.")
+                continue
+
+            for feature in feature_list:
+                analise_column_range_cases(df_raw_recipes, feature)
 
         elif option == "S":
-            print("Sortint")
+            print("Saliendo...")
 
         else:
             print(f"Opción '{option}' no reconocida.")
