@@ -61,6 +61,7 @@ def run_script(script):
         sys.exit(f"Error: no se encuentra el archivo {script}")
 
     print(f"Ejecutando {script.relative_to(BASE_DIR)} ...")
+    
     subprocess.run([sys.executable, str(script), str(DATA_DIR)], check=True)
 
 

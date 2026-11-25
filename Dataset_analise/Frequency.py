@@ -1,4 +1,3 @@
-
 import sys
 from pathlib import Path
 import pandas as pd
@@ -91,20 +90,20 @@ def bow_to_freq(bow_tuple):
     freq_array = np.asarray(np.sum(bow_matrix, axis=0)).ravel()
     return labels_array, freq_array
 
-def get_edge_cases(labels_array, freq_array, filename, percentile=95, output_dir="Dataset_analise/Resultats/edgecases"):
+def get_frequency(labels_array, freq_array, filename, percentile=95, output_dir="Dataset_analise/Resultats/frequency"):
 
-    filename = f"{filename}_edgecases_{percentile}.csv"
+    filename = f"{filename}_frequency_{percentile}.csv"
 
     percentile_value = np.percentile(freq_array, percentile)
     freq_mask = (freq_array >= percentile_value)
 
-    edge_cases = labels_array[freq_mask]
-    edge_freqs = freq_array[freq_mask]
+    top_values = labels_array[freq_mask]
+    top_freqs = freq_array[freq_mask]
 
-    order = np.argsort(-edge_freqs)
+    order = np.argsort(-top_freqs)
 
-    edge_cases = edge_cases[order]
-    edge_freqs = edge_freqs[order]
+    top_values = top_values[order]
+    top_freqs = top_freqs[order]
 
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, filename)
@@ -112,31 +111,31 @@ def get_edge_cases(labels_array, freq_array, filename, percentile=95, output_dir
     with open(output_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["value", "freq"])
-        writer.writerows(zip(edge_cases, edge_freqs))
+        writer.writerows(zip(top_values, top_freqs))
 
     print(f"Results saved to {output_path}")
 
-    return edge_cases, edge_freqs
+    return top_values, top_freqs
 
 
-def analise_column_edge_cases(df_raw_recipe, feature, percentile=95):
+def analise_column_frequency(df_raw_recipe, feature, percentile=95):
 
     type_feat = DICT_COLUMN_TYPE.get(feature)
 
     if type_feat == "int":
         labels_array, freq_array = int_dist(df_raw_recipe, feature)
-        get_edge_cases(labels_array, freq_array, filename=feature, percentile=percentile)
+        get_frequency(labels_array, freq_array, filename=feature, percentile=percentile)
 
     elif type_feat in ("list_str", "string"):
         bow_tuple = bow_distribution_colum(df_raw_recipe, feature)
         labels_array, freq_array = bow_to_freq(bow_tuple)
-        get_edge_cases(labels_array, freq_array, filename=feature, percentile=percentile)
+        get_frequency(labels_array, freq_array, filename=feature, percentile=percentile)
 
     elif type_feat == "list_num":
         result = list_int_dist(df_raw_recipe, feature)
         for position, (labels_array, freq_array) in enumerate(result):
             nutrient = NUTRITION_POSITIONS.get(position, str(position))
-            get_edge_cases(labels_array, freq_array, filename=f"{feature}_{nutrient}", percentile=percentile)
+            get_frequency(labels_array, freq_array, filename=f"{feature}_{nutrient}", percentile=percentile)
 
     else:
         print(f"Aviso: la columna '{feature}' no tiene tipo definido y se ignora.")

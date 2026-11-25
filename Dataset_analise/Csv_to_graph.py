@@ -1,12 +1,12 @@
 '''
-Genera gráficos a partir de los CSV de resultados (edgecases y valuerange).
+Genera gráficos a partir de los CSV de resultados (frequency y valuerange).
 
 Funciones:
-    read_csv_edge(file_path)
-        Lee un CSV de edgecases (value, freq).
+    read_frequency_csv(file_path)
+        Lee un CSV de frequency (value, freq).
     read_valuerange_csv(file_path)
         Lee un CSV de valuerange (secciones RANGE / TOP / BOTTOM).
-    edge_cases_graph_generate(df, feature, prova, percentile)
+    frequency_graph_generate(df, feature, prova, percentile)
         Gráfico de barras con los valores más frecuentes.
     valuerange_graph_generate(range_dict, df_top, df_bottom, feature, prova, percentile)
         Dos gráficos de barras horizontales con las recetas de valores más altos y más bajos.
@@ -21,7 +21,7 @@ import csv
 from pathlib import Path
 
 import matplotlib
-matplotlib.use("Agg")  
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -29,7 +29,7 @@ import pandas as pd
 BASE_DIR = Path(__file__).resolve().parent
 
 OUT_DIR_DICTIONARY = {
-    "edgecases":  BASE_DIR / "Resultats" / "edgecases",
+    "frequency":  BASE_DIR / "Resultats" / "frequency",
     "valuerange": BASE_DIR / "Resultats" / "valuerange",
 }
 
@@ -44,9 +44,9 @@ FEATURES = [
 ]
 
 
-def read_csv_edge(file_path):
+def read_frequency_csv(file_path):
     '''
-    Lee un CSV de edgecases. Devuelve un DataFrame vacío si el fichero
+    Lee un CSV de frequency. Devuelve un DataFrame vacío si el fichero
     no existe o está vacío.
     '''
     try:
@@ -74,7 +74,7 @@ def read_valuerange_csv(file_path):
         for row in csv.reader(f):
             if not row:
                 continue
-            if len(row) == 1:                
+            if len(row) == 1:
                 current = row[0].split()[0]
                 sections[current] = []
             else:
@@ -113,7 +113,7 @@ def valuerange_graph_generate(range_dict, df_top, df_bottom, feature, prova, per
     print(f"Graph saved to {output_path}")
 
 
-def edge_cases_graph_generate(df, feature=None, prova=None, percentile=None, top_n=30):
+def frequency_graph_generate(df, feature=None, prova=None, percentile=None, top_n=30):
 
     # Limitar el número de barras para que la imagen no sea enorme
     df = df.head(top_n)
@@ -148,10 +148,10 @@ def generate_graphs_from_csv(prueba, percentile, ingredient):
 
     filepath = OUT_DIR_DICTIONARY[prueba] / f"{ingredient}_{prueba}_{percentile}.csv"
 
-    if prueba == "edgecases":
-        df = read_csv_edge(filepath)
+    if prueba == "frequency":
+        df = read_frequency_csv(filepath)
         if not df.empty:
-            edge_cases_graph_generate(df, feature=ingredient, prova=prueba, percentile=percentile)
+            frequency_graph_generate(df, feature=ingredient, prova=prueba, percentile=percentile)
 
     elif prueba == "valuerange":
         if not filepath.exists():

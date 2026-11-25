@@ -1,38 +1,10 @@
-import sys
-from pathlib import Path
-import pandas as pd
-from sklearn.feature_extraction.text import CountVectorizer
-from typing import Tuple
-import numpy as np
 import os
 import csv
 import ast
+import numpy as np
+import pandas as pd
 
-DATA_DIR = Path(sys.argv[1])
-
-DICT_COLUMN_TYPE = {
-    "id":             "int",
-    "minutes":        "int",
-    "contributor_id": "int",
-    "tags":           "list_str",
-    "nutrition":      "list_num",
-    "n_steps":        "int",
-    "steps":          "list_str",
-    "description":    "string",
-    "ingredients":    "list_str",
-    "n_ingredients":  "int",
-}
-
-NUTRITION_POSITIONS = {
-    0: "calories",
-    1: "total_fat_pdv",
-    2: "sugar_pdv",
-    3: "sodium_pdv",
-    4: "protein_pdv",
-    5: "saturated_fat_pdv",
-    6: "carbohydrates_pdv",
-
-}
+from Frequency import DICT_COLUMN_TYPE, NUTRITION_POSITIONS
 
 
 def get_labels_and_values_int(df, feature):
@@ -71,6 +43,15 @@ def get_labels_and_values_list_num(df, feature, position):
 def get_range_values(labels, values, filename, percentile_range=5, output_dir="Dataset_analise/Resultats/valuerange"):
 
     filename = f"{filename}_valuerange_{percentile_range}.csv"
+
+    # Quitar valores vacíos (NaN) para que los percentiles no salgan nan
+    values = np.asarray(values, dtype=float)
+    mask = ~np.isnan(values)
+    labels, values = labels[mask], values[mask]
+
+    if values.size == 0:
+        print(f"Aviso: '{filename}' no tiene valores numéricos; no se calcula el rango.")
+        return None
 
     percentile_up = np.percentile(values, 100 - percentile_range)
     percentile_down = np.percentile(values, percentile_range)
@@ -135,8 +116,8 @@ def analise_column_range_cases(df_raw_recipe, feature, percentile=5):
 
     elif type_feat == "list_num":
         for position, nutrient in NUTRITION_POSITIONS.items():
-            labels, values = get_labels_and_values_list_num(df_raw_recipe, "nutrition", position)
-            get_range_values(labels, values, filename=f"nutrition_{nutrient}", percentile_range=percentile)
+            labels, values = get_labels_and_values_list_num(df_raw_recipe, feature, position)
+            get_range_values(labels, values, filename=f"{feature}_{nutrient}", percentile_range=percentile)
 
     else:
         print(f"Aviso: la columna '{feature}' no tiene tipo definido y se ignora.")

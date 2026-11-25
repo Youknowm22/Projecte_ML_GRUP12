@@ -10,9 +10,9 @@ Funciones:
     parse_feature_list(feature_str, valid_columns)
         Convierte el texto del usuario (p. ej. "[ingredients, steps]") en una lista
         de nombres de columna, quitando las que no existen en el DataFrame.
-    bow_distribution_colum(df, column)
-        Aplica un Bag of Words (CountVectorizer) a una columna de texto y muestra
-        el tamaño del vocabulario, la forma de la matriz y las primeras palabras.
+    ask_features(df, prueba)
+        Muestra las columnas disponibles, pide la lista de features al usuario
+        y la devuelve validada (acepta "all").
     main()
         Carga los datasets y lanza un menú interactivo para elegir qué análisis hacer.
 '''
@@ -26,9 +26,10 @@ import numpy as np
 import os
 import csv
 import ast
-from Edge_cases import  analise_column_edge_cases
-from range_cases import analise_column_range_cases
+from Frequency import analise_column_frequency
+from value_range import analise_column_range_cases
 from Csv_to_graph import generate_graph, OUT_DIR_DICTIONARY, FEATURES
+from Get_stats import get_stats_main, STATS_TYPES
 
 DATA_DIR = Path(sys.argv[1])
 
@@ -54,6 +55,16 @@ NUTRITION_POSITIONS = {
     5: "saturated_fat_pdv",
     6: "carbohydrates_pdv",
 }
+
+PRUEBAS = [
+    "frequency",
+    "value_range",
+    "generate_grafo",
+    "get_stats",
+    "Salir"
+]
+
+
 
 def download_dataset(dataset_path):
     '''
@@ -114,60 +125,87 @@ def parse_feature_list(feature_str, valid_columns):
     return feature_list
 
 
+def ask_features(df, prueba):
+    '''
+    Pide al usuario qué columnas analizar y devuelve la lista validada.
+
+    Escribir "all" selecciona todas las columnas del DataFrame.
+
+    Parámetros:
+        df (pd.DataFrame): DataFrame sobre el que se hará el análisis.
+        prueba (str): nombre de la prueba (solo para el mensaje).
+
+    Devuelve:
+        list[str]: columnas válidas (vacía si no se indicó ninguna válida).
+    '''
+    print("Columnas disponibles: all,", ", ".join(df.columns))
+    feature_str = input(
+        f"Analising {prueba} for which features?([feature1, feature2, ..., featuren] or all): "
+    )
+
+    if feature_str.strip().strip("[]").strip().lower() == "all":
+        return list(df.columns)
+
+    feature_list = parse_feature_list(feature_str, df.columns)
+    if not feature_list:
+        print("No se ha indicado ninguna columna válida.")
+    return feature_list
+
+
 def main():
     '''
     Punto de entrada del análisis.
 
     Carga RAW_recipes.csv y RAW_interactions.csv y muestra un menú interactivo:
-        bow_dist -> pide una lista de features y calcula el BoW de cada una.
-        S        -> sale del programa.
+        frequency      -> pide una lista de features y analiza sus valores más frecuentes.
+        value_range    -> pide una lista de features y analiza su rango de valores.
+        generate_grafo -> genera gráficos a partir de los CSV de resultados.
+        get_stats      -> pide una lista de features y un tipo (frequency/value)
+                          y calcula las estadísticas de cada una.
+        S / Salir      -> sale del programa.
     '''
     df_raw_recipes = download_dataset(DATA_DIR / "RAW_recipes.csv")
     df_raw_interactions = download_dataset(DATA_DIR / "RAW_interactions.csv")
     option = "T"
 
-    while option != "S":
-        option = input("What do you want to do? (edge_cases // value_range // generate_grafo // S): ").strip()
+    while option not in ("S", "Salir"):
+        option = input(f"What do you want to do? {PRUEBAS}: ").strip()
 
-        if option == "edge_cases":
-            print("Columnas disponibles:", list(df_raw_recipes.columns))
-            feature_str = input("Analising edge_cases for which features?([feature1, feature2, ..., featuren]): ")
+        if option == "frequency":
+            for feature in ask_features(df_raw_recipes, option):
+                analise_column_frequency(df_raw_recipes, feature)
 
-            feature_list = parse_feature_list(feature_str, df_raw_recipes.columns)
-
-            if not feature_list:
-                print("No se ha indicado ninguna columna válida.")
-                continue
-
-            for feature in feature_list:
-                analise_column_edge_cases(df_raw_recipes, feature)
         elif option == "value_range":
-            print("Columnas disponibles:", list(df_raw_recipes.columns))
-            feature_str = input("Analising value_range for which features?([feature1, feature2, ..., featuren]): ")
-
-            feature_list = parse_feature_list(feature_str, df_raw_recipes.columns)
-
-            if not feature_list:
-                print("No se ha indicado ninguna columna válida.")
-                continue
-
-            for feature in feature_list:
+            for feature in ask_features(df_raw_recipes, option):
                 analise_column_range_cases(df_raw_recipes, feature)
 
         elif option == "generate_grafo":
-            print("Pruebas disponibles: edgecases, valuerange")
+            print("Pruebas disponibles: frequency, valuerange")
             prueba = input("Enter the test name: ").strip()
 
             print("Features disponibles: all,", ", ".join(FEATURES))
             feature = input("Enter the feature name: ").strip()
 
-            print("Percentiles: edgecases -> 95, 90 | valuerange -> 5, 10")
-            default = "95" if prueba == "edgecases" else "5"
+            print("Percentiles: frequency -> 95, 90 | valuerange -> 5, 10")
+            default = "95" if prueba == "frequency" else "5"
             percentile = input(f"Enter the percentile (default {default}): ").strip() or default
 
             generate_graph(prueba, feature, percentile)
 
-        elif option == "S":
+        elif option == "get_stats":
+            tipus = input(f"Enter the type of analysis {STATS_TYPES}: ").strip().lower()
+            if tipus not in STATS_TYPES:
+                print(f"Tipo '{tipus}' no reconocido. Opciones: {STATS_TYPES}")
+                continue
+
+            feature_list = ask_features(df_raw_recipes, f"get_stats ({tipus})")
+            if not feature_list:
+                continue
+
+            for feature in feature_list:
+                get_stats_main(df_raw_recipes, feature, tipus)
+
+        elif option in ("S", "Salir"):
             print("Saliendo...")
 
         else:
