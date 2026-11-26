@@ -2,7 +2,7 @@
 Evaluación de un modelo de recomendación de recetas con Bag of Words.
 
 Se ejecuta con:  python Modelo_Evaluacion.py <ruta_al_dataset>
-La ruta (DATA_DIR) debe contener RAW_recipes.csv e interactions_train_1.csv.
+La ruta (DATA_DIR) debe contener RAW_recipes.csv e interactions_train.csv.
 
 Idea de la prueba (autoevaluación con ingredientes ocultos):
     1. Se elige una receta al azar.
@@ -11,9 +11,19 @@ Idea de la prueba (autoevaluación con ingredientes ocultos):
     4. Se mira si la receta original está entre esas k.
 Repitiendo esto muchas veces se obtiene Hit@k: el % de veces que la original aparece.
 
-Las recetas que se usan son las que aparecen en interactions_train_1.csv.
+Las recetas que se usan son las que aparecen en interactions_train.csv.
 Ese archivo solo trae el id de cada receta (recipe_id), así que el nombre y
 los ingredientes se obtienen de RAW_recipes.csv a través de su columna "id".
+
+Qué se guarda (en carpetas junto a pickles/):
+    modelo/count_vectorizer.pkl
+        El CountVectorizer ya ajustado (el vocabulario de ingredientes). Se
+        sobrescribe cada vez que se ejecuta el programa.
+    resultados/test_<fecha>_p<porcentaje>_k<k>/
+        Una carpeta nueva cada vez que se ejecuta la opción "test", con:
+        bow_matrix.pkl     -> la matriz receta x ingrediente (el BoW).
+        recetas_prueba.pkl -> DataFrame con las recetas escogidas y los
+                              ingredientes con los que se consultó cada una.
 
 Funciones:
     download_dataset(dataset_path)
@@ -24,14 +34,18 @@ Funciones:
         Se queda con las recetas del train y devuelve sus ids, nombres e ingredientes.
     build_bow(docs)
         Construye el vocabulario de ingredientes y la matriz receta x ingrediente (binaria).
+    save_vectorizer(vectorizer)
+        Guarda el CountVectorizer en modelo/count_vectorizer.pkl.
+    save_run(X, df_recetas, porcentaje, k)
+        Guarda la matriz BoW y las recetas de prueba en una carpeta nueva de resultados/.
     sample_ingredients(ingredients, porcentaje, rng)
         Elige al azar un porcentaje de los ingredientes de una receta.
     top_k(sim, k)
         Devuelve los índices de las k recetas con mayor similitud.
     query_recipe(idx, docs, vectorizer, X, porcentaje, k, rng)
         Hace una consulta con una receta y dice si la original aparece entre las k.
-    option_test(nombres, docs, vectorizer, X)
-        Repite la prueba muchas veces y muestra el Hit@k.
+    option_test(ids, nombres, docs, vectorizer, X)
+        Repite la prueba muchas veces, muestra el Hit@k y guarda los resultados.
     option_ejemplo(nombres, docs, vectorizer, X)
         Hace una sola prueba y la muestra con detalle.
     main()
@@ -42,6 +56,8 @@ import sys
 import os
 import ast
 import time
+import pickle
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -49,12 +65,16 @@ import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-DATA_DIR = Path(sys.argv[1])
+DATA_DIR = Path("Dataset")
 
 PORCENTAJE = 60    # % de ingredientes que se conservan en la consulta
 K = 10             # nº de recetas más cercanas que se devuelven
 N_PRUEBAS = 1000   # nº de recetas aleatorias en la prueba completa
 SEED = 0           # semilla del azar (para que los resultados se puedan repetir)
+
+BASE_DIR = Path(__file__).resolve().parent.parent   # misma carpeta donde está pickles/
+MODEL_DIR = BASE_DIR / "modelo"                     # aquí va el CountVectorizer
+RESULTS_DIR = BASE_DIR / "resultados"               # aquí va una subcarpeta por cada "test"
 
 PRUEBAS = [
     "test",
@@ -108,7 +128,7 @@ def prepare_recipes(df_recipes, df_interactions):
 
     Parámetros:
         df_recipes (pd.DataFrame): DataFrame de RAW_recipes.csv.
-        df_interactions (pd.DataFrame): DataFrame de interactions_train_1.csv.
+        df_interactions (pd.DataFrame): DataFrame de interactions_train.csv.
 
     Devuelve:
         tuple[list[int], list[str], list[list[str]]]: ids, nombres y listas de
@@ -147,6 +167,59 @@ def build_bow(docs):
     vectorizer = CountVectorizer(analyzer=identity, binary=True)
     X = vectorizer.fit_transform(docs)
     return vectorizer, X
+
+
+def save_vectorizer(vectorizer):
+    '''
+    Guarda el CountVectorizer ya ajustado en modelo/count_vectorizer.pkl.
+    La carpeta se crea si no existe y el archivo se sobrescribe cada vez.
+
+    Para cargarlo más tarde (en un script donde esté definida la función identity):
+        with open("modelo/count_vectorizer.pkl", "rb") as f:
+            vectorizer = pickle.load(f)
+
+    Parámetros:
+        vectorizer: CountVectorizer ya ajustado.
+
+    Devuelve:
+        Path: ruta del archivo guardado.
+    '''
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    path = MODEL_DIR / "count_vectorizer.pkl"
+
+    with open(path, "wb") as f:
+        pickle.dump(vectorizer, f)
+
+    print(f"CountVectorizer guardado en {path}")
+    return path
+
+
+def save_run(X, df_recetas, porcentaje, k):
+    '''
+    Guarda los resultados de una ejecución de "test" en una carpeta nueva,
+    resultados/test_<fecha>_p<porcentaje>_k<k>/, con dos pickles:
+        bow_matrix.pkl     -> la matriz receta x ingrediente (el BoW).
+        recetas_prueba.pkl -> DataFrame con una fila por receta escogida.
+
+    Parámetros:
+        X: matriz receta x ingrediente.
+        df_recetas (pd.DataFrame): recetas de prueba y sus ingredientes de consulta.
+        porcentaje (float): % de ingredientes conservados (solo para el nombre de la carpeta).
+        k (int): nº de recetas devueltas (solo para el nombre de la carpeta).
+
+    Devuelve:
+        Path: carpeta donde se ha guardado todo.
+    '''
+    marca = datetime.now().strftime("%Y%m%d_%H%M%S")
+    carpeta = RESULTS_DIR / f"test_{marca}_p{porcentaje:g}_k{k}"
+    os.makedirs(carpeta, exist_ok=True)
+
+    with open(carpeta / "bow_matrix.pkl", "wb") as f:
+        pickle.dump(X, f)
+    df_recetas.to_pickle(carpeta / "recetas_prueba.pkl")
+
+    print(f"Resultados guardados en {carpeta}")
+    return carpeta
 
 
 def sample_ingredients(ingredients, porcentaje, rng):
@@ -221,11 +294,20 @@ def ask_params(con_pruebas):
     return porcentaje, k, n_pruebas
 
 
-def option_test(nombres, docs, vectorizer, X):
+def option_test(ids, nombres, docs, vectorizer, X):
     '''
     Repite la prueba con muchas recetas aleatorias y muestra Hit@k:
     el % de veces que la receta original aparece entre las k más cercanas.
     También muestra lo que saldría eligiendo al azar (k / nº de recetas).
+
+    Al terminar guarda la matriz BoW y las recetas escogidas (con los
+    ingredientes de cada consulta) en una carpeta nueva de resultados/.
+    Columnas de recetas_prueba.pkl:
+        idx                   -> fila de la receta en la matriz X.
+        id                    -> id de la receta en RAW_recipes.csv.
+        name                  -> nombre de la receta.
+        ingredientes_consulta -> ingredientes que se conservaron en la consulta.
+        acierto               -> True si la original quedó entre las k más cercanas.
     '''
     porcentaje, k, n_pruebas = ask_params(con_pruebas=True)
 
@@ -233,15 +315,25 @@ def option_test(nombres, docs, vectorizer, X):
     indices = rng.choice(len(docs), size=n_pruebas, replace=False)
 
     aciertos = 0
+    filas = []
     inicio = time.time()
     for idx in indices:
-        _, _, _, acierto = query_recipe(idx, docs, vectorizer, X, porcentaje, k, rng)
+        consulta, _, _, acierto = query_recipe(idx, docs, vectorizer, X, porcentaje, k, rng)
         aciertos += acierto
+        filas.append({
+            "idx": int(idx),
+            "id": ids[idx],
+            "name": nombres[idx],
+            "ingredientes_consulta": consulta,
+            "acierto": bool(acierto),
+        })
 
     print(f"\nRecetas de prueba: {n_pruebas}  |  conserva {porcentaje:g}% de ingredientes  |  k = {k}")
     print(f"Hit@{k}: {aciertos / n_pruebas:.3f}  ({aciertos} de {n_pruebas})")
     print(f"Al azar sería: {k / len(docs):.5f}")
     print(f"Tiempo: {time.time() - inicio:.1f} s")
+
+    save_run(X, pd.DataFrame(filas), porcentaje, k)
 
 
 def option_ejemplo(nombres, docs, vectorizer, X):
@@ -270,18 +362,20 @@ def main():
     '''
     Punto de entrada.
 
-    Carga RAW_recipes.csv e interactions_train_1.csv, se queda con las recetas
-    del train, construye el Bag of Words de ingredientes y muestra un menú:
-        test    -> repite la prueba con muchas recetas y muestra Hit@k.
+    Carga RAW_recipes.csv e interactions_train.csv, se queda con las recetas
+    del train, construye el Bag of Words de ingredientes, guarda el CountVectorizer
+    y muestra un menú:
+        test    -> repite la prueba con muchas recetas, muestra Hit@k y guarda los resultados.
         ejemplo -> hace una sola prueba y la muestra con detalle.
         S / Salir -> sale del programa.
     '''
     df_recipes = download_dataset(DATA_DIR / "RAW_recipes.csv")
-    df_interactions = download_dataset(DATA_DIR / "interactions_train_1.csv")
+    df_interactions = download_dataset(DATA_DIR / "interactions_train.csv")
 
     ids, nombres, docs = prepare_recipes(df_recipes, df_interactions)
     vectorizer, X = build_bow(docs)
     print(f"Recetas: {X.shape[0]}, ingredientes distintos (vocabulario): {X.shape[1]}")
+    save_vectorizer(vectorizer)
 
     option = "T"
 
@@ -289,7 +383,7 @@ def main():
         option = input(f"\nWhat do you want to do? {PRUEBAS}: ").strip()
 
         if option == "test":
-            option_test(nombres, docs, vectorizer, X)
+            option_test(ids, nombres, docs, vectorizer, X)
 
         elif option == "ejemplo":
             option_ejemplo(nombres, docs, vectorizer, X)
