@@ -30,6 +30,11 @@ from Frequency import analise_column_frequency
 from value_range import analise_column_range_cases
 from Csv_to_graph import generate_graph, OUT_DIR_DICTIONARY, FEATURES
 from Get_stats import get_stats_main, STATS_TYPES
+from Interactions import analise_interactions, PARTS
+from Stat_tests import analise_tests, PARTS as STAT_PARTS
+
+PRUEBAS = ["frequency", "value_range", "generate_grafo", "get_stats", "interactions", "stat_tests", "Salir"]
+
 
 DATA_DIR = Path(sys.argv[1])
 
@@ -204,6 +209,14 @@ def main():
 
             for feature in feature_list:
                 get_stats_main(df_raw_recipes, feature, tipus)
+
+        elif option == "interactions":
+            part = input(f"Which part? {PARTS}: ").strip() or "all"
+            analise_interactions(df_raw_interactions, df_raw_recipes, part)
+
+        elif option == "stat_tests":
+            part = input(f"Which part? {STAT_PARTS}: ").strip() or "all"
+            analise_tests(df_raw_interactions, df_raw_recipes, part)
 
         elif option in ("S", "Salir"):
             print("Saliendo...")
